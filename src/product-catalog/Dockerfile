@@ -1,27 +1,27 @@
-# Copyright The OpenTelemetry Authors
-# SPDX-License-Identifier: Apache-2.0
-
-
-FROM golang:1.24-bookworm AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /usr/src/app/
 
-COPY ./src/product-catalog/go.mod go.mod
-COPY ./src/product-catalog/go.sum go.sum
 
+# Copy source code
+COPY . .
+
+# Download binaries
 RUN go mod download
 
-COPY ./src/product-catalog/genproto/oteldemo/ genproto/oteldemo/
-COPY ./src/product-catalog/products/ products/
-COPY ./src/product-catalog/main.go main.go
+#build the code and get artifact
 
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -ldflags "-s -w" -o product-catalog main.go
+RUN go build -o product-catalog .
 
-FROM gcr.io/distroless/static-debian12:nonroot
+####################################
+
+FROM alpine AS release
 
 WORKDIR /usr/src/app/
 
+COPY ./products ./products
 COPY --from=builder /usr/src/app/product-catalog/ ./
 
-EXPOSE ${PRODUCT_CATALOG_PORT}
+ENV PRODUCT_CATALOG_PORT=8089
+
 ENTRYPOINT [ "./product-catalog" ]
